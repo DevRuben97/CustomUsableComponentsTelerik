@@ -1,0 +1,11 @@
+﻿@using CustomUsableComponentsTelerik.Client.Components.CodeInput;
+@page "/code-input"
+
+<CodeInput @bind-Value="Value" />
+
+
+<span>Valor Guardado: @Value</span>
+
+@code {
+    private string Value{ get; set; }    
+}

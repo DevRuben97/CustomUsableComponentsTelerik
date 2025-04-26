@@ -1,0 +1,17 @@
+﻿@page "/"
+@using CustomUsableComponentsTelerik.Client.Components.CronExpression
+
+<h3>Componentes utiles de Telerik</h3>
+<p>Lista de componentes utiles para blazor utilizando componentes de telerik</p>
+
+@code {
+    MarkupString helloString;
+
+    private string CronExpression{ get; set; }
+
+    void SayHelloHandler()
+    {
+        string msg = string.Format("Hello from <strong>Telerik Blazor</strong> at {0}.<br /> Now you can use C# to write front-end!", DateTime.Now);
+        helloString = new MarkupString(msg);
+    }
+}

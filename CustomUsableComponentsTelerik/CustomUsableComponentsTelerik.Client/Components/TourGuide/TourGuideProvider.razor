@@ -1,0 +1,28 @@
+﻿@using CustomUsableComponentsTelerik.Client.Services
+@using CustomUsableComponentsTelerik.Client.Services.TourGuide.Models.MiAplicacion.TourGuide
+@inject ITourGuideService tourGuideService;
+@implements IAsyncDisposable;
+
+@code {
+
+    /// <summary>
+    ///Evento que se ejecuta cuando se inicializan las opciones del servicio de guia. Si no es suministrado, se inicializan las opciones por defecto.
+    /// </summary>
+    [Parameter]
+    public Action<TourGuideOptions> OnInitOptions { get; set; } = (options) => { };
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await tourGuideService.InitializeOptionsAsync(OnInitOptions);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await tourGuideService.DisposeAsync();
+        GC.SuppressFinalize(this);
+
+    }
+}

@@ -1,0 +1,91 @@
+﻿@using CustomUsableComponentsTelerik.Client.Components.TourGuide.Interfaces
+@using CustomUsableComponentsTelerik.Client.Services;
+@using CustomUsableComponentsTelerik.Client.Services.TourGuide.Models;
+@inject ITourGuideService tourGuideService;
+@implements IPageTourGuideContainer;
+
+
+<CascadingValue Value="this" IsFixed="true">
+    @ChildContent
+</CascadingValue>
+
+@code {
+    /// <summary>
+    /// Nombre de la pagina a la cual se agregaran los pasos. Este nombre es utilizado para identificar la pagina en la cual se agregaran los pasos.
+    /// </summary>
+    [Parameter]
+    [EditorRequired]
+    public string Name { get; set; } = "Guia";
+
+    /// <summary>
+    /// Configuraciones de los pasos de la guia de la pagina.
+    /// </summary>
+    [Parameter]
+    public RenderFragment ChildContent { get; set; }
+
+    [Parameter]
+    public EventCallback OnStepChange { get; set; }
+
+    [Parameter]
+    public EventCallback OnFinish { get; set; }
+
+    [Parameter]
+    public bool AutoStart { get; set; } = true;
+
+    public string PageName => Name;
+
+
+    private List<TourGuideStep> Steps = new List<TourGuideStep>();
+
+    protected override void OnInitialized()
+    {
+        this.tourGuideService.OnFinish += OnFinishHandler;
+        this.tourGuideService.OnAfterStepChange += OnStepChangeHandler;
+    }
+
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await tourGuideService.AddStepsAsync(Steps);
+        }
+        if (firstRender && AutoStart && !(await tourGuideService.IsFinishedAsync(Name)))
+        {
+            await StartAsync();
+        }
+    }
+
+    public async Task StartAsync()
+    {
+        await this.tourGuideService.StartTourAsync(this.Name);
+    }
+
+    public void AddStep(TourGuideStep step)
+    {
+        Steps.Add(step);
+    }
+
+    public void RemoveStep(string targetSelector)
+    {
+        Steps.RemoveAll(x => x.TargetSelector == targetSelector);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        this.tourGuideService.OnFinish -= OnFinishHandler;
+        this.tourGuideService.OnAfterStepChange -= OnStepChangeHandler;
+        GC.SuppressFinalize(this);
+        await Task.CompletedTask;
+    }
+
+    void OnFinishHandler()
+    {
+        this.OnFinish.InvokeAsync();
+    }
+
+    void OnStepChangeHandler()
+    {
+        this.OnStepChange.InvokeAsync();
+    }
+}

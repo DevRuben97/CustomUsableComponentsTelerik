@@ -1,0 +1,58 @@
+﻿@using CustomUsableComponentsTelerik.Client.Components.TourGuide.Interfaces
+@implements IDisposable
+
+<div class="ptg-step-container" style="display: none;" id="@Id"
+data-tg-tour="@Content"
+data-tg-title="@Title"
+data-tg-group="@Container.PageName"
+data-tg-order="@Order">
+
+</div>
+
+@code {
+
+    [CascadingParameter]
+    protected IPageTourGuideContainer Container { get; set; }
+
+    [Parameter]
+    [EditorRequired]
+    public string? Content { get; set; }
+
+    /// <summary>
+    /// Id del paso.
+    /// </summary>
+    [Parameter]
+    [EditorRequired]
+    public string? Id { get; set; }
+
+    [Parameter]
+    public string? Title { get; set; }
+
+    [Parameter]
+    public int Order { get; set; }
+
+    [Parameter]
+    public string? TargetSelector { get; set; }
+
+    [Parameter]
+    public bool IsTargetSelectorFixed{ get; set; }
+
+    protected override void OnInitialized()
+    {
+        Container?.AddStep(new Services.TourGuide.Models.TourGuideStep
+            {
+                Content = Content,
+                Group = Container.PageName,
+                Order = Order,
+                Id = Id?? Guid.NewGuid().ToString(),
+                Fixed = IsTargetSelectorFixed,
+                Title = Title,
+                TargetSelector = TargetSelector
+            });
+    }
+
+    public void Dispose()
+    {
+        this.Container.RemoveStep(TargetSelector);
+    }
+}

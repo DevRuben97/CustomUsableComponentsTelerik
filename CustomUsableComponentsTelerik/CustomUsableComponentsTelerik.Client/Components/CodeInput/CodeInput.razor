@@ -1,0 +1,42 @@
+﻿@inject IJSRuntime JSRuntime
+
+<div class="code-input" style="display: flex; gap: 5px;">
+    @for (int i = 0; i < Count; i++)
+    {
+        int a = i;
+
+        <div @onfocusin="(()=> CheckFocus(a))" @onkeydown="HandleKeyDown">
+            
+            <TelerikTextBox Value="@_values[a]"
+                            ValueExpression="@(() => _values[a])"
+                            ValueChanged="@((string value) => HandleInput(value))"
+                            MaxLength="1"
+                            Enabled="@Enabled"
+                            ReadOnly="@IsReadOnly"
+                            OnBlur="UpdateValue"
+                            Width="40px"
+                            @key="i"
+                            Class="code-input-text-value"
+                            id="@("code-input-"+ i)"
+                            @ref="_elementReferences[a]" />
+
+       </div>
+
+    }
+</div>
+
+
+<style>
+    .code-input {
+        display: flex;
+        gap: @($"{Gap}px");
+    }
+
+    .code-input-text-value {
+        text-align: center;
+    }
+</style>
+
+@code {
+
+}

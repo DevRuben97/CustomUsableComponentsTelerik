@@ -1,0 +1,100 @@
+﻿@using CustomUsableComponentsTelerik.Client.Components.CronExpression.Helpers
+@using Telerik.Blazor.Components
+@using System.Text.RegularExpressions
+
+
+
+<TelerikTabStrip>
+    <TabStripTab Title="Configuración">
+        <div class="cron-builder">
+            <label>Frecuencia</label>
+            <TelerikDropDownList @bind-Value="@SelectedFrequency" Data="@Frequencies" 
+                                 OnChange="@OnFrecuencyChangedHandler" />
+
+            @if (SelectedFrequency == CronFrequency.Minute)
+            {
+                <label>Cada cuántos minutos: </label>
+                <TelerikNumericTextBox @bind-Value="@MinuteInterval" Min="1" Max="59" Format="0"
+                                       OnChange="@UpdateCronExpression"/>
+            }
+            else if (SelectedFrequency == CronFrequency.Hourly)
+            {
+                <label>Cada cuántas horas:</label>
+                <TelerikNumericTextBox @bind-Value="@HourInterval" Min="1" Max="23" Format="0"
+                                       OnChange="@UpdateCronExpression" />
+            }
+            else if (SelectedFrequency == CronFrequency.Daily)
+            {
+                <label>Cada cuántos días:</label>
+                <TelerikNumericTextBox @bind-Value="@DayInterval" Min="1" Max="31" Format="0"
+                                       OnChange="@UpdateCronExpression"  />
+            }
+            else if (SelectedFrequency == CronFrequency.Weekly)
+            {
+                <label>Día de la semana:</label>
+                <TelerikMultiSelect Data="@WeekDays"
+                                    AutoClose="false"
+                                    OnChange="UpdateCronExpression"
+                                @bind-Value="@SelectedWeekDays">
+
+                </TelerikMultiSelect>
+                <label>Hora de ejecución:</label>
+                <TelerikTimePicker @bind-Value="@SelectedDateTime" Format="HH:mm tt" OnChange="@UpdateCronExpression" />
+            }
+            else if (SelectedFrequency == CronFrequency.Monthly)
+            {
+                <label>Dia del mes:</label>
+                <TelerikNumericTextBox @bind-Value="@DayOfMonth" Min="1" Max="31" Format="0"
+                                       OnChange="@UpdateCronExpression"  />
+                <label>Solo en  los Meses:</label>
+                <TelerikMultiSelect @bind-Value="@SelectedMonths" Data="@Months"
+                                    AutoClose="false"
+                                    OnChange="@UpdateCronExpression" />
+                <label>Día de la semana:</label>
+                <TelerikMultiSelect Data="@WeekDays"
+                                    AutoClose="false"
+                                    OnChange="UpdateCronExpression"
+                                    @bind-Value="@SelectedWeekDays">
+
+                </TelerikMultiSelect>
+                <label>Hora de ejecución:</label>
+                <TelerikTimePicker @bind-Value="@SelectedDateTime" Format="HH:mm tt" ShowClearButton OnChange="@UpdateCronExpression" />
+            }
+
+           
+        </div>
+        @if (ShowDescriptionOnConfiguration)
+        {
+            <p class="cron-description">@CronExpressionHelper.GetCronDescription(CronExpression).Item2</p>
+        }
+    </TabStripTab>
+
+    <TabStripTab Title="Manual" Visible="EnableCustomInput">
+        <label>Expresión CRON</label>
+        <TelerikTextBox @bind-Value="@ManualCronExpression" DebounceDelay="500" OnChange="@ValidateManualExpression" />
+        @if (!IsValidCron)
+        {
+            <p class="cron-text-danger">Expresión cron inválida.</p>
+        }
+        else{
+            <p class="cron-description">@CronExpressionHelper.GetCronDescription(ManualCronExpression).Item2</p>
+        }
+    </TabStripTab>
+</TelerikTabStrip>
+
+
+<style>
+    .cron-builder{
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+    .cron-text-danger{
+        color: red;
+    }
+    .cron-description{
+        text-align: center;
+        font-weight: 600;
+        margin-top: 16px;
+    }
+</style>

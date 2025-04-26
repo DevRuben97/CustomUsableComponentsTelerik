@@ -1,0 +1,24 @@
+﻿@using CustomUsableComponentsTelerik.Client.Components.TourGuide;
+@page "/toor-guide";
+
+<TelerikButton Id="btn-initial configuration">
+    Configuracion Iniciada
+</TelerikButton>
+
+
+<PageTourGuide Name="TestPage">
+      <PageTourGuideStep  Title="Inicio de la configuración"
+                                            Content="Bienvenido a la pantalla inicial"
+                                            Order="1"
+                                            Id="first-step"
+                                            />
+    <PageTourGuideStep  Title="Configruación Inicial"
+                                            Content="Haz click aqui para iniciar la configuración del stepper"
+                                            Order="2"
+                                            TargetSelector="#btn-initial configuration"
+                                            Id="second-step" />
+</PageTourGuide>
+
+@code {
+
+}

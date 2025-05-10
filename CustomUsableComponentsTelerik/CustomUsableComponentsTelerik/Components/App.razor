@@ -9,8 +9,10 @@
     <link rel="stylesheet" href="app.css" />
     <link rel="stylesheet" href="CustomUsableComponentsTelerik.styles.css" />
     <link rel="stylesheet" href="styles/tourGuides/TourGuide.css" />
+    <link rel="stylesheet" href="/styles/CommandBar.css"/>
     <link rel="icon" type="image/png" href="favicon.png" />
-    <HeadOutlet @rendermode="@RenderMode.InteractiveAuto" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" />
+    <HeadOutlet @rendermode="@RenderMode.InteractiveWebAssembly" />
 
     <link rel="stylesheet" href="lib/blazor-ui/swatches/bootstrap-main.css" />
     <link rel="stylesheet" href="_content/Telerik.UI.for.Blazor.Trial/css/kendo-font-icons/font-icons.css" />
@@ -18,9 +20,10 @@
 </head>
 
 <body>
-    <Routes @rendermode="@RenderMode.InteractiveAuto" />
+    <Routes @rendermode="@RenderMode.InteractiveWebAssembly" />
     <script src="_framework/blazor.web.js"></script>
     <script  src="/js/tour/tourGuide.js" ></script>
+    <script src="/js/commandPaletteInterop .js"></script>
 </body>
 
 </html>

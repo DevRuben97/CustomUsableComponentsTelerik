@@ -1,0 +1,45 @@
+﻿@using CustomUsableComponentsTelerik.Client.Components.CommandBar.Models
+
+<div class="command-item @(IsSelected ? "selected" : "")"
+     id="@($"command-item-{Item.Id}")"
+     @onclick="OnItemClick">
+    <div class="command-item-icon">
+        <i class="@Item.Icon"></i>
+    </div>
+    <div class="command-item-content">
+        <div class="command-item-title">@Item.Title</div>
+        @if (!string.IsNullOrEmpty(Item.Subtitle))
+        {
+            <div class="command-item-subtitle">@Item.Subtitle</div>
+        }
+    </div>
+    @if (Item.Shortcut != null && Item.Shortcut.Any())
+    {
+        <div class="command-item-shortcut">
+            @for (int i = 0; i < Item.Shortcut.Count; i++)
+            {
+                <kbd>@Item.Shortcut[i]</kbd>
+                @if (i < Item.Shortcut.Count - 1)
+                {
+                    <span>+</span>
+                }
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public CommandAction Item { get; set; }
+
+    [Parameter]
+    public bool IsSelected { get; set; }
+
+    [Parameter]
+    public EventCallback<CommandAction> OnClick { get; set; }
+
+    private async Task OnItemClick()
+    {
+        await OnClick.InvokeAsync(Item);
+    }
+}

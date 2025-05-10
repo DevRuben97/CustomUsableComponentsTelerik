@@ -2,7 +2,6 @@ using CustomUsableComponentsTelerik.Client.Pages;
 using CustomUsableComponentsTelerik.Client.Services.TourGuide;
 using CustomUsableComponentsTelerik.Client.Services;
 using CustomUsableComponentsTelerik.Components;
-
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.

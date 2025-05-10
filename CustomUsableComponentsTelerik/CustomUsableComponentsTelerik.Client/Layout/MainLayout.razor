@@ -1,4 +1,6 @@
-﻿@using CustomUsableComponentsTelerik.Client.Components.TourGuide;
+﻿@using CustomUsableComponentsTelerik.Client.Components.CommandBar.Models
+@using CustomUsableComponentsTelerik.Client.Components.TourGuide;
+@using CustomUsableComponentsTelerik.Client.Components.CommandBar;
 @inherits LayoutComponentBase
 
 <TelerikRootComponent>
@@ -13,6 +15,7 @@
             </div>
 
             <TourGuideProvider />
+            <CommandBar Data="Actions" />
             <article class="content px-4">
                 @Body
             </article>
@@ -25,3 +28,19 @@
         <a class="dismiss">🗙</a>
     </div>
 </TelerikRootComponent>
+
+
+@code{
+
+    private List<CommandAction> Actions{ get; set; } = new List<CommandAction>();
+
+    protected override void OnInitialized()
+    {
+        var allItems = new List<CommandAction>();
+        allItems.AddRange(CommandPaletteData.RecentItems);
+        allItems.AddRange(CommandPaletteData.QuickActions);
+        allItems.AddRange(CommandPaletteData.Commands);
+        this.Actions = allItems;
+    }
+
+}

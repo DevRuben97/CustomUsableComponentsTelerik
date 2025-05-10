@@ -1,0 +1,216 @@
+﻿@using CustomUsableComponentsTelerik.Client.Components.CommandBar.Models
+@using CustomUsableComponentsTelerik.Client.Components.CommandBar.StateContainers
+@using Microsoft.AspNetCore.Components.Web
+@inject IJSRuntime JSRuntime
+@implements IDisposable
+
+
+
+<div class="command-palette @(CommandPaletteState.IsOpen ? "active" : "")">
+    <div class="command-palette-backdrop" @onclick="CommandPaletteState.Close"></div>
+    <div class="command-palette-container">
+        <div class="command-header">
+            <div class="command-search">
+                <div class="command-search-icon">
+                    <i class="bi bi-search"></i>
+                </div>
+                <input id="commandPaletteInput" 
+                type="text" 
+                class="command-input" 
+                placeholder="Search for commands..."
+                @oninput="OnInputValueChanged"
+                @onkeydown="HandleKeyDown" />
+                <button class="command-close" @onclick="CommandPaletteState.Close" type="button">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+
+            <div class="command-filters">
+                <div class="filter-label">Filter by:</div>
+                <div class="filter-options">
+                    @foreach (var category in CommandPaletteData.FilterCategories)
+                    {
+                        bool isActive = CommandPaletteState.ActiveFilters.Contains(category.Id);
+                        <button class="filter-button @(isActive ? "active" : "")" 
+                        type="button"
+                        @onclick="() => ToggleFilter(category.Id)">
+                            <i class="bi @category.Icon"></i>
+                            @category.Label
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="command-results">
+            @{
+                if (CommandPaletteState.FilteredItems.Any())
+                {
+                    int itemIndexOffset = 0;
+                    foreach (var section in CommandPaletteState.FilteredItems)
+                    {
+                        <CommandSection Section="section"
+                        ItemIndexOffset="itemIndexOffset"
+                        SelectedIndex="CommandPaletteState.SelectedItemIndex"
+                        OnItemClick="ExecuteItem" />
+                        itemIndexOffset += section.Items.Count;
+                    }
+                }
+                else
+                {
+                    <div class="command-empty-results">
+                        <h5>No Records</h5>
+                    </div>
+                }
+            }
+        </div>
+        <!--Footer-->
+        <div class="command-footer">
+            <div class="command-footer-navigation">
+                <span><i class="bi bi-arrow-up"></i> <i class="bi bi-arrow-down"></i> Navigate</span>
+                <span><i class="bi bi-arrow-return-left"></i> Confirm</span>
+                <span><kbd>esc</kbd> Close</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+
+    #region Parameters
+
+    /// <summary>
+    /// Actions of the command bar.
+    /// </summary>
+    [Parameter]
+    public IEnumerable<CommandAction> Data { get; set; } = Enumerable.Empty<CommandAction>();
+
+    #endregion
+
+    private string SearchQuery { get; set; } = string.Empty;
+    private DotNetObjectReference<CommandBar> objRef;
+    private CommandPaletteStateContainer CommandPaletteState;
+    private bool DataWasChanged = false;
+
+    protected override void OnInitialized()
+    {
+        CommandPaletteState = new(this.JSRuntime);
+        SetCommandsData();
+        CommandPaletteState.OnStateChanged += StateHasChanged;
+        CommandPaletteState.OnOpened += () =>
+        {
+            SearchQuery = string.Empty;
+        };
+        objRef = DotNetObjectReference.Create(this);
+    }
+
+    public override Task SetParametersAsync(ParameterView parameters)
+    {
+        // Check if the Data parameter has changed
+        if (parameters.TryGetValue<IEnumerable<CommandAction>>(nameof(Data), out var newData))
+        {
+            if (!Data.SequenceEqual(newData))
+            {
+                DataWasChanged = true;
+                Data = newData;
+            }
+        }
+
+        return base.SetParametersAsync(parameters);
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (DataWasChanged)
+        {
+            SetCommandsData();
+            DataWasChanged = false;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync(
+                "commandPaletteInterop.addKeyboardShortcuts", 
+                objRef);
+        }
+
+        // Scroll selected item into view if any
+        if (CommandPaletteState.SelectedItemIndex >= 0)
+        {
+            var selectedItem = CommandPaletteState.GetSelectedItem();
+            if (selectedItem != null)
+            {
+                await JSRuntime.InvokeVoidAsync(
+                    "commandPaletteInterop.scrollIntoView", 
+                    $"command-item-{selectedItem.Id}");
+            }
+        }
+    }
+
+    private void SetCommandsData()
+    {
+        CommandPaletteState.CommandItems = Data.ToList();
+    }
+
+    public void Dispose()
+    {
+        CommandPaletteState.OnStateChanged -= StateHasChanged;
+        objRef?.Dispose();
+    }
+
+    [JSInvokable]
+    public void OpenCommandPalette()
+    {
+        CommandPaletteState.Open();
+        StateHasChanged();
+    }
+
+    private async Task OnInputValueChanged(ChangeEventArgs args)
+    {
+        var value = args.Value?.ToString() ?? string.Empty;
+        this.SearchQuery = value;
+        await FilterValues();
+    }
+
+    async Task FilterValues()
+    {
+        await Task.Delay(100);
+        CommandPaletteState.FilterItems(SearchQuery);
+    }
+
+    private void HandleKeyDown(KeyboardEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case "ArrowDown":
+                CommandPaletteState.SelectNextItem();
+                break;
+            case "ArrowUp":
+                CommandPaletteState.SelectPreviousItem();
+                break;
+            case "Enter":
+                CommandPaletteState.ExecuteSelectedItem();
+                break;
+            case "Escape":
+                CommandPaletteState.Close();
+                break;
+        }
+    }
+
+    private void ToggleFilter(string filterId)
+    {
+        CommandPaletteState.ToggleFilter(filterId);
+    }
+
+    private void ExecuteItem(CommandAction item)
+    {
+        if (item.Action != null)
+        {
+            item.Action.Invoke();
+            CommandPaletteState.Close();
+        }
+    }
+    }

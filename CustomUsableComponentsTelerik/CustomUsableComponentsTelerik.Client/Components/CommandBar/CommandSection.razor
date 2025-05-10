@@ -1,0 +1,31 @@
+﻿@using CustomUsableComponentsTelerik.Client.Components.CommandBar.Models
+<div class="command-section">
+    <div class="command-section-header">@Section.Title</div>
+    <div class="command-section-items">
+        @{
+            int itemIndex = ItemIndexOffset;
+            foreach (var item in Section.Items)
+            {
+                int currentIndex = itemIndex;
+                <CommandItem Item="item"
+                             IsSelected="currentIndex == SelectedIndex"
+                             OnClick="OnItemClick" />
+                itemIndex++;
+            }
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public CommandSectionModel Section { get; set; }
+
+    [Parameter]
+    public int ItemIndexOffset { get; set; }
+
+    [Parameter]
+    public int SelectedIndex { get; set; }
+
+    [Parameter]
+    public EventCallback<CommandAction> OnItemClick { get; set; }
+}

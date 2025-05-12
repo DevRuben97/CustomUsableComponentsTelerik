@@ -1,4 +1,5 @@
-﻿@using CustomUsableComponentsTelerik.Client.Components.CommandBar.Models
+﻿@using CustomUsableComponentsTelerik.Client.Components.CommandBar.Events
+@using CustomUsableComponentsTelerik.Client.Components.CommandBar.Models
 @using CustomUsableComponentsTelerik.Client.Components.TourGuide;
 @using CustomUsableComponentsTelerik.Client.Components.CommandBar;
 @inherits LayoutComponentBase
@@ -15,10 +16,13 @@
             </div>
 
             <TourGuideProvider />
-            <CommandBar Data="Actions" />
-            <article class="content px-4">
-                @Body
-            </article>
+            <CommandBar FilterCategories="@CommandPaletteData.FilterCategories"
+                        ServerSearchFunction="OnSearchHandlerAsync">
+
+                <article class="content px-4">
+                    @Body
+                </article>
+            </CommandBar>
         </main>
     </div>
 
@@ -30,9 +34,9 @@
 </TelerikRootComponent>
 
 
-@code{
+@code {
 
-    private List<CommandAction> Actions{ get; set; } = new List<CommandAction>();
+    private List<CommandAction> Actions { get; set; } = new List<CommandAction>();
 
     protected override void OnInitialized()
     {
@@ -42,5 +46,167 @@
         allItems.AddRange(CommandPaletteData.Commands);
         this.Actions = allItems;
     }
+
+    // Esta función simula una solicitud al servidor para obtener datos paginados
+    private async Task OnSearchHandlerAsync(OnReadCommandsEventArgs args)
+    {
+        try
+        {
+            // Simular un retardo de red
+            await Task.Delay(TimeSpan.FromSeconds(7));
+
+            // En un escenario real, aquí harías una solicitud HTTP al servidor
+            // var response = await Http.GetFromJsonAsync<CommandSearchResponse>(
+            //     $"api/commands/search?query={Uri.EscapeDataString(args.SearchQuery)}" +
+            //     $"&page={args.PageIndex}&pageSize={args.PageSize}&filters={string.Join(",", args.ActiveFilters)}");
+
+            // Simulamos la respuesta del servidor
+            var mockResults = await GetMockResults(args.Request.Query, args.Request.FilterCategories, args.Request.PageSize, args.Request.PageNumber);
+
+            // Establecer los resultados obtenidos del servidor
+            args.SetResult(mockResults.Items, mockResults.TotalCount);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al cargar comandos: {ex.Message}");
+            // En caso de error, devolver una lista vacía
+            args.SetResult(new List<CommandAction>(), 0);
+        }
+    }
+
+    // Método auxiliar para generar datos de prueba
+    private Task<(List<CommandAction> Items, int TotalCount)> GetMockResults(string query, HashSet<string> filters, int pageSize, int pageIndex)
+    {
+        // Crear un conjunto grande de datos ficticios (en producción esto vendría del servidor)
+        var allItems = new List<CommandAction>();
+
+        // Generar elementos de tipo "page"
+        if (!filters.Any() || filters.Contains("page"))
+        {
+            for (int i = 1; i <= 50; i++)
+            {
+                allItems.Add(new CommandAction
+                    {
+                        Id = $"page-{i}",
+                        Title = $"Página {i}",
+                        Subtitle = $"Ir a la página de ejemplo #{i}",
+                        Icon = "bi-file-text",
+                        Type = "page",
+                        Action = () => Console.WriteLine($"Navegando a Página {i}")
+                    });
+            }
+        }
+
+        // Generar elementos de tipo "user"
+        if (!filters.Any() || filters.Contains("user"))
+        {
+            var users = new[] { "Ana", "Carlos", "Elena", "Diego", "Laura", "Miguel", "Sofía", "Pablo" };
+            for (int i = 0; i < 30; i++)
+            {
+                var user = users[i % users.Length];
+                allItems.Add(new CommandAction
+                    {
+                        Id = $"user-{i}",
+                        Title = $"{user} García",
+                        Subtitle = $"Ver perfil de usuario",
+                        Icon = "bi-person",
+                        Type = "user",
+                        Action = () => Console.WriteLine($"Ver perfil de {user}")
+                    });
+            }
+        }
+
+        // Generar elementos de tipo "setting"
+        if (!filters.Any() || filters.Contains("setting"))
+        {
+            var settings = new[] { "General", "Perfil", "Notificaciones", "Seguridad", "Privacidad", "Tema", "Idioma" };
+            foreach (var setting in settings)
+            {
+                allItems.Add(new CommandAction
+                    {
+                        Id = $"setting-{setting.ToLower()}",
+                        Title = $"Configuración: {setting}",
+                        Subtitle = $"Ajustar configuración de {setting.ToLower()}",
+                        Icon = "bi-gear",
+                        Type = "setting",
+                        Action = () => Console.WriteLine($"Ajustando {setting}")
+                    });
+            }
+        }
+
+        // Generar elementos de tipo "report"
+        if (!filters.Any() || filters.Contains("report"))
+        {
+            var reports = new[] { "Ventas", "Usuarios", "Tráfico", "Conversiones", "Rendimiento" };
+            foreach (var report in reports)
+            {
+                for (int i = 1; i <= 5; i++)
+                {
+                    allItems.Add(new CommandAction
+                        {
+                            Id = $"report-{report.ToLower()}-{i}",
+                            Title = $"Reporte: {report} {i}",
+                            Subtitle = $"Ver estadísticas de {report.ToLower()} del periodo {i}",
+                            Icon = "bi-bar-chart",
+                            Type = "report",
+                            Action = () => Console.WriteLine($"Viendo reporte {report} {i}")
+                        });
+                }
+            }
+        }
+
+        // Aplicar filtro de búsqueda si hay una consulta
+        if (!string.IsNullOrWhiteSpace(query))
+        {
+            query = query.ToLower();
+            allItems = allItems.Where(item =>
+                item.Title.ToLower().Contains(query) ||
+                (item.Subtitle != null && item.Subtitle.ToLower().Contains(query))
+            ).ToList();
+        }
+
+        // Calcular paginación
+        int totalCount = allItems.Count;
+        int skip = (pageIndex - 1) * pageSize;
+        var paginatedItems = allItems
+            .Skip(skip)
+            .Take(pageSize)
+            .ToList();
+
+        return Task.FromResult((paginatedItems, totalCount));
+    }
+
+    // async Task OnSearchHandlerAsync(OnReadCommandsEventArgs args)
+    // {
+    //     await Task.Delay(TimeSpan.FromSeconds(10));
+          
+    //     // Get all items
+    //     var allItems = Actions.ToList();
+
+    //     // Filter by search query if present
+    //     if (!string.IsNullOrWhiteSpace(args.Request.Query))
+    //     {
+    //         allItems = allItems.Where(item =>
+    //             item.Title.ToLowerInvariant().Contains(args.Request.Query) ||
+    //             (item.Subtitle != null && item.Subtitle.ToLowerInvariant().Contains(args.Request.Query))
+    //         ).ToList();
+    //     }
+
+    //     // Apply active filters if any
+    //     if (args.Request.FilterCategories.Count > 0)
+    //     {
+    //         // In a real application, this would filter based on actual categories
+    //         // For demonstration purposes, we'll just filter randomly
+    //         //var random = new Random();
+    //         //allItems = allItems.Where(item => random.Next(2) == 0 || _activeFilters.Count == 0).ToList();
+
+    //         allItems = allItems.Where(item => args.Request.FilterCategories.Contains(item.Type ?? "other")).ToList();
+    //     }
+
+    //     args.Actions = allItems;
+    //     // Set the total count of items
+    //     args.TotalCount = allItems.Count;
+
+    // }
 
 }

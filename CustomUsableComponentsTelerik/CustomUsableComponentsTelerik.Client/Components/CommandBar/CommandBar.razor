@@ -1,9 +1,10 @@
-﻿@using CustomUsableComponentsTelerik.Client.Components.CommandBar.Models
+﻿@using CustomUsableComponentsTelerik.Client.Components.CommandBar.Events
+@using CustomUsableComponentsTelerik.Client.Components.CommandBar.Models
 @using CustomUsableComponentsTelerik.Client.Components.CommandBar.StateContainers
 @using Microsoft.AspNetCore.Components.Web
+@using Telerik.Blazor.Components
 @inject IJSRuntime JSRuntime
 @implements IDisposable
-
 
 
 <div class="command-palette @(CommandPaletteState.IsOpen ? "active" : "")">
@@ -14,54 +15,85 @@
                 <div class="command-search-icon">
                     <i class="bi bi-search"></i>
                 </div>
-                <input id="commandPaletteInput" 
-                type="text" 
-                class="command-input" 
-                placeholder="Search for commands..."
-                @oninput="OnInputValueChanged"
-                @onkeydown="HandleKeyDown" />
+                <input id="commandPaletteInput"
+                       type="text"
+                       class="command-input"
+                       placeholder="Search for commands..."
+                       @oninput="OnInputValueChanged"
+                       @onkeydown="HandleKeyDown" />
                 <button class="command-close" @onclick="CommandPaletteState.Close" type="button">
                     <i class="bi bi-x"></i>
                 </button>
             </div>
 
-            <div class="command-filters">
-                <div class="filter-label">Filter by:</div>
-                <div class="filter-options">
-                    @foreach (var category in CommandPaletteData.FilterCategories)
-                    {
-                        bool isActive = CommandPaletteState.ActiveFilters.Contains(category.Id);
-                        <button class="filter-button @(isActive ? "active" : "")" 
-                        type="button"
-                        @onclick="() => ToggleFilter(category.Id)">
-                            <i class="bi @category.Icon"></i>
-                            @category.Label
-                        </button>
-                    }
+            @if (CommandPaletteState.FilterCategories.Any())
+            {
+                <div class="command-filters">
+                    <div class="filter-label">Filter by:</div>
+                    <div class="filter-options">
+                        @foreach (var category in CommandPaletteState.FilterCategories)
+                        {
+                            bool isActive = CommandPaletteState.ActiveFilters.Contains(category.Id);
+                            <button class="filter-button @(isActive ? "active" : "")"
+                                    type="button"
+                                    @onclick="() => ToggleFilter(category.Id)">
+                                <i class="bi @category.Icon"></i>
+                                @category.Label
+                            </button>
+                        }
+                    </div>
                 </div>
-            </div>
+            }
         </div>
 
-        <div class="command-results">
-            @{
-                if (CommandPaletteState.FilteredItems.Any())
-                {
-                    int itemIndexOffset = 0;
-                    foreach (var section in CommandPaletteState.FilteredItems)
+        <div class="command-results" id="commandResultsContainer">
+            @if (ShowSkeleton)
+            {
+                <div class="skeleton-container">
+                    @for (int i = 0; i < 5; i++)
                     {
-                        <CommandSection Section="section"
-                        ItemIndexOffset="itemIndexOffset"
-                        SelectedIndex="CommandPaletteState.SelectedItemIndex"
-                        OnItemClick="ExecuteItem" />
-                        itemIndexOffset += section.Items.Count;
+                        <div class="skeleton-section">
+                            <TelerikSkeleton Width="100%" Height="24px" Class="mb-2" AnimationType="@SkeletonAnimationType.Wave" />
+                            @for (int j = 0; j < 3; j++)
+                            {
+                                <div class="d-flex align-items-center mb-3">
+                                    <TelerikSkeleton Width="24px" Height="24px" ShapeType="@SkeletonShapeType.Circle" Class="me-2" AnimationType="@SkeletonAnimationType.Wave" />
+                                    <div class="flex-grow-1">
+                                        <TelerikSkeleton Width="80%" Height="16px" Class="mb-1" AnimationType="@SkeletonAnimationType.Wave" />
+                                        <TelerikSkeleton Width="50%" Height="12px" AnimationType="@SkeletonAnimationType.Wave" />
+                                    </div>
+                                </div>
+                            }
+                        </div>
                     }
-                }
-                else
+                </div>
+            }
+            else if (CommandPaletteState.FilteredItems.Any())
+            {
+                int itemIndexOffset = 0;
+                foreach (var section in CommandPaletteState.FilteredItems)
                 {
-                    <div class="command-empty-results">
-                        <h5>No Records</h5>
+                    <CommandSection Section="section"
+                                    ItemIndexOffset="itemIndexOffset"
+                                    SelectedIndex="CommandPaletteState.SelectedItemIndex"
+                                    OnItemClick="ExecuteItem" />
+                    itemIndexOffset += section.Items.Count;
+                }
+
+                @if (CommandPaletteState.HasMoreData)
+                {
+                    <div class="loader-container @(CommandPaletteState.IsLoading ? "" : "d-none")">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
                     </div>
                 }
+            }
+            else
+            {
+                <div class="command-empty-results">
+                    <h5>No Records</h5>
+                </div>
             }
         </div>
         <!--Footer-->
@@ -75,6 +107,10 @@
     </div>
 </div>
 
+<CascadingValue Value="CommandPaletteState">
+    @ChildContent
+</CascadingValue>
+
 @code {
 
     #region Parameters
@@ -85,23 +121,120 @@
     [Parameter]
     public IEnumerable<CommandAction> Data { get; set; } = Enumerable.Empty<CommandAction>();
 
+    /// <summary>
+    /// Set the filter categories for the command bar.
+    /// </summary>
+    [Parameter]
+    public IEnumerable<FilterCategory> FilterCategories { get; set; } = Enumerable.Empty<FilterCategory>();
+
+    /// <summary>
+    /// Function for server-side search and filtering.
+    /// </summary>
+    [Parameter]
+    public Func<OnReadCommandsEventArgs, Task>? ServerSearchFunction { get; set; }
+
+    /// <summary>
+    /// Debounce time in milliseconds for search input.
+    /// </summary>
+    [Parameter]
+    public int DebounceTime { get; set; } = 300;
+
+    /// <summary>
+    /// Set the page size for the command bar results.
+    /// </summary>
+    [Parameter]
+    public int PageSize { get; set; } = 50;
+
+    [Parameter]
+    public RenderFragment ChildContent { get; set; }
+
     #endregion
 
     private string SearchQuery { get; set; } = string.Empty;
     private DotNetObjectReference<CommandBar> objRef;
-    private CommandPaletteStateContainer CommandPaletteState;
+    private CommandPaletteStateManager CommandPaletteState;
     private bool DataWasChanged = false;
+    private System.Threading.CancellationTokenSource _debounceTokenSource;
+
+    // Temporizador para el Skeleton
+    private System.Threading.CancellationTokenSource _skeletonTokenSource;
+    private bool ShowSkeleton { get; set; } = false;
 
     protected override void OnInitialized()
     {
-        CommandPaletteState = new(this.JSRuntime);
+        CommandPaletteState = new(this.JSRuntime, PageSize);
         SetCommandsData();
         CommandPaletteState.OnStateChanged += StateHasChanged;
         CommandPaletteState.OnOpened += () =>
         {
             SearchQuery = string.Empty;
         };
+
+        // Ahora suscribirse a los eventos de carga
+        CommandPaletteState.OnLoadingStarted += HandleLoadingStarted;
+        CommandPaletteState.OnLoadingFinished += HandleLoadingFinished;
+
+        this.CommandPaletteState.FilterCategories = FilterCategories.ToList();
+
+        // Set server search function if provided
+        if (ServerSearchFunction != null)
+        {
+            CommandPaletteState.SetServerSearchFunction(ServerSearchFunction);
+        }
+
         objRef = DotNetObjectReference.Create(this);
+    }
+
+    private async void HandleLoadingStarted()
+    {
+        try
+        {
+            // Siempre creamos un nuevo token source para evitar usar uno cancelado o dispuesto
+            _skeletonTokenSource = new System.Threading.CancellationTokenSource();
+            var token = _skeletonTokenSource.Token;
+
+            // Esperar 3 segundos antes de mostrar el skeleton
+            await Task.Delay(3000, token);
+
+            // Si la carga sigue en progreso después de 3 segundos Y el token aún es válido, mostrar el skeleton
+            if (CommandPaletteState.IsLoading && !token.IsCancellationRequested && !CommandPaletteState.IsLoadingMoreItems)
+            {
+                ShowSkeleton = true;
+                StateHasChanged();
+            }
+        }
+        catch (TaskCanceledException)
+        {
+            // La tarea fue cancelada, ignorar
+        }
+        catch (ObjectDisposedException)
+        {
+            // El token source ya fue dispuesto, ignoramos la excepción
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error en HandleLoadingStarted: {ex.Message}");
+        }
+    }
+
+    private void HandleLoadingFinished()
+    {
+        try
+        {
+            // Cancelar el temporizador del skeleton de forma segura
+            if (_skeletonTokenSource != null && !_skeletonTokenSource.IsCancellationRequested)
+            {
+                _skeletonTokenSource.Cancel();
+            }
+
+            // Ocultar el skeleton
+            ShowSkeleton = false;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error en HandleLoadingFinished: {ex.Message}");
+        }
     }
 
     public override Task SetParametersAsync(ParameterView parameters)
@@ -113,6 +246,19 @@
             {
                 DataWasChanged = true;
                 Data = newData;
+            }
+        }
+
+        // Check if the ServerSearchFunction parameter has changed
+        if (parameters.TryGetValue<Func<OnReadCommandsEventArgs, Task>>(
+            nameof(ServerSearchFunction), out var newServerSearchFunction))
+        {
+            ServerSearchFunction = newServerSearchFunction;
+
+            // Update the search function if CommandPaletteState has been initialized
+            if (CommandPaletteState != null)
+            {
+                CommandPaletteState.SetServerSearchFunction(ServerSearchFunction);
             }
         }
 
@@ -133,7 +279,15 @@
         if (firstRender)
         {
             await JSRuntime.InvokeVoidAsync(
-                "commandPaletteInterop.addKeyboardShortcuts", 
+                "commandPaletteInterop.addKeyboardShortcuts",
+                objRef);
+        }
+
+        // Configurar infinite scroll si el componente está abierto
+        if (CommandPaletteState.IsOpen)
+        {
+            await JSRuntime.InvokeVoidAsync(
+                "commandPaletteInterop.setupInfiniteScroll",
                 objRef);
         }
 
@@ -144,7 +298,7 @@
             if (selectedItem != null)
             {
                 await JSRuntime.InvokeVoidAsync(
-                    "commandPaletteInterop.scrollIntoView", 
+                    "commandPaletteInterop.scrollIntoView",
                     $"command-item-{selectedItem.Id}");
             }
         }
@@ -157,8 +311,43 @@
 
     public void Dispose()
     {
-        CommandPaletteState.OnStateChanged -= StateHasChanged;
-        objRef?.Dispose();
+        // Desuscribir eventos
+        if (CommandPaletteState != null)
+        {
+            CommandPaletteState.OnStateChanged -= StateHasChanged;
+            CommandPaletteState.OnLoadingStarted -= HandleLoadingStarted;
+            CommandPaletteState.OnLoadingFinished -= HandleLoadingFinished;
+        }
+
+        // Limpiar event listeners de scroll
+        _ = JSRuntime.InvokeVoidAsync("commandPaletteInterop.cleanupInfiniteScroll");
+
+        // Disponer objetos de manera segura
+        try
+        {
+            objRef?.Dispose();
+        }
+        catch (Exception) { /* Ignorar errores al disponer */ }
+
+        try
+        {
+            if (_debounceTokenSource != null && !_debounceTokenSource.IsCancellationRequested)
+            {
+                _debounceTokenSource.Cancel();
+                _debounceTokenSource.Dispose();
+            }
+        }
+        catch (Exception) { /* Ignorar errores al disponer */ }
+
+        try
+        {
+            if (_skeletonTokenSource != null && !_skeletonTokenSource.IsCancellationRequested)
+            {
+                _skeletonTokenSource.Cancel();
+                _skeletonTokenSource.Dispose();
+            }
+        }
+        catch (Exception) { /* Ignorar errores al disponer */ }
     }
 
     [JSInvokable]
@@ -168,17 +357,51 @@
         StateHasChanged();
     }
 
+    [JSInvokable]
+    public async Task LoadMoreItems()
+    {
+        if (CommandPaletteState.HasMoreData && !CommandPaletteState.IsLoading)
+        {
+            await CommandPaletteState.LoadMoreItems();
+        }
+    }
+
     private async Task OnInputValueChanged(ChangeEventArgs args)
     {
         var value = args.Value?.ToString() ?? string.Empty;
         this.SearchQuery = value;
-        await FilterValues();
+        await DebouncedFilterValues();
+    }
+
+    async Task DebouncedFilterValues()
+    {
+        // Cancel previous debounce operation if any
+        _debounceTokenSource?.Cancel();
+        _debounceTokenSource?.Dispose();
+        _debounceTokenSource = new System.Threading.CancellationTokenSource();
+
+        var token = _debounceTokenSource.Token;
+
+        try
+        {
+            // Wait for the debounce time
+            await Task.Delay(DebounceTime, token);
+
+            // If not cancelled, proceed with filtering
+            if (!token.IsCancellationRequested)
+            {
+                await FilterValues();
+            }
+        }
+        catch (TaskCanceledException)
+        {
+            // Task was cancelled, ignore
+        }
     }
 
     async Task FilterValues()
     {
-        await Task.Delay(100);
-        CommandPaletteState.FilterItems(SearchQuery);
+        await CommandPaletteState.FilterItems(SearchQuery);
     }
 
     private void HandleKeyDown(KeyboardEventArgs e)
@@ -213,4 +436,4 @@
             CommandPaletteState.Close();
         }
     }
-    }
+}

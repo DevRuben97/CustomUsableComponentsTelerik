@@ -4,7 +4,17 @@
      id="@($"command-item-{Item.Id}")"
      @onclick="OnItemClick">
     <div class="command-item-icon">
-        <i class="@Item.Icon"></i>
+        @{
+            if(Item.Icon.GetType()== typeof(FontIcon))
+            {
+                var icon = (FontIcon)Item.Icon;
+                <TelerikFontIcon Icon="@icon"/>
+            }
+            else if (Item.Icon.GetType()== typeof(string))
+            {
+                <i class="@Item.Icon"></i>
+            }
+        }
     </div>
     <div class="command-item-content">
         <div class="command-item-title">@Item.Title</div>

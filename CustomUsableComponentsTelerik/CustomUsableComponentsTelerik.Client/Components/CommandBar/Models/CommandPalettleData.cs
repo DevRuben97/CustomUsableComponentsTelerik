@@ -15,7 +15,7 @@
             public string Id { get; set; }
             public string Title { get; set; }
             public string Subtitle { get; set; }
-            public string Icon { get; set; }
+            public object Icon { get; set; }
             public string Type { get; set; }
             public List<string> Shortcut { get; set; }
             public Action Action { get; set; }

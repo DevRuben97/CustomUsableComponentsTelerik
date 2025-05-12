@@ -14,4 +14,8 @@
         <PackageReference Include="Telerik.UI.for.Blazor.Trial" Version="7.1.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Components\CommandBar\Services\" />
+  </ItemGroup>
+
 </Project>

@@ -50,5 +50,36 @@ window.commandPaletteInterop = {
                 element.isContentEditable
             );
         }
+    },
+    // Nueva función para detectar el scroll y cargar más datos
+    setupInfiniteScroll: function (dotNetRef) {
+        const resultsContainer = document.querySelector('.command-results');
+        if (!resultsContainer) return;
+
+        // Eliminar evento previo si existe
+        resultsContainer.removeEventListener('scroll', resultsContainer._scrollHandler);
+
+        // Función para manejar el evento de scroll
+        resultsContainer._scrollHandler = function () {
+            const scrollPosition = this.scrollTop + this.clientHeight;
+            const scrollHeight = this.scrollHeight;
+
+            // Si estamos cerca del final (a 100px del final)
+            if (scrollHeight - scrollPosition < 100) {
+                dotNetRef.invokeMethodAsync('LoadMoreItems');
+            }
+        };
+
+        // Añadir el nuevo evento
+        resultsContainer.addEventListener('scroll', resultsContainer._scrollHandler);
+    },
+
+    // Función para limpiar los event listeners
+    cleanupInfiniteScroll: function () {
+        const resultsContainer = document.querySelector('.command-results');
+        if (resultsContainer && resultsContainer._scrollHandler) {
+            resultsContainer.removeEventListener('scroll', resultsContainer._scrollHandler);
+            delete resultsContainer._scrollHandler;
+        }
     }
 };
